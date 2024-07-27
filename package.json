@@ -1,0 +1,30 @@
+{
+  "name": "remarkable-tools",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "genreport": "npx ts-node ./genreport.ts",
+    "sync": "npx ts-node ./syncdevice.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google-cloud/vision": "^4.3.0",
+    "@notionhq/client": "^2.2.15",
+    "@tryfabric/martian": "^1.2.4",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "form-data": "^4.0.0",
+    "md-to-pdf": "^5.2.4",
+    "node-fetch": "^2.7.0",
+    "openai": "^4.53.0",
+    "pdf-to-png-converter": "^3.2.0",
+    "rss-parser": "^3.13.0",
+    "tesseract.js": "^5.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
