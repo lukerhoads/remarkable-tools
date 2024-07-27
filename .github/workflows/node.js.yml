@@ -31,4 +31,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm run genreport
+    - name: Install dependencies
+      run: npm install
+    - name: Run genreport
+      run: npm run genreport
