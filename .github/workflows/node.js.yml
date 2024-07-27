@@ -6,6 +6,7 @@ name: Node.js CI
 on:
   schedule:
     - cron: '24 4 * * *'
+  workflow_dispatch:
 
 jobs:
   genreport:
