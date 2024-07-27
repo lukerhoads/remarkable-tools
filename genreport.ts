@@ -21,18 +21,18 @@ const genReport = async () => {
         database_id: process.env.NOTION_RSS_DATABASE_ID,
     })
 
-    let rss_sources = pages.results.map(page => {
+    let rss_sources = pages.results.map((page: any) => {
         if ("properties" in page && (page.properties.Enabled as any).checkbox) {
             return {
                 name: (page.properties.Name as any).title[0].text.content,
                 url: (page.properties.Link as any).url
             }
         }
-    }).filter(elem => elem != undefined)
+    }).filter((elem: any) => elem != undefined)
 
     for (let i=0; i<rss_sources.length; i++) {
-        let feed = await parser.parseURL(rss_sources[i].url)
-        let items = feed.items.filter(item => {
+        let feed = await parser.parseURL(rss_sources[i]!.url)
+        let items = feed.items.filter((item: any) => {
             if (item.pubDate) {
                 let pubDate = new Date(item.pubDate)
                 return pubDate.getDay() == yesterday.getDay()
@@ -40,8 +40,8 @@ const genReport = async () => {
             
             return false
         }).slice(0, 3)
-        report_md += "## " + rss_sources[i].name + " (" + items.length +")" + "\n\n"
-        items.forEach(item => {
+        report_md += "## " + rss_sources[i]!.name + " (" + items.length +")" + "\n\n"
+        items.forEach((item: any) => {
             report_md += "### " + item.title + "\n" + item.contentSnippet + "\n\n"
         })
     }
