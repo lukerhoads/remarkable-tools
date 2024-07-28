@@ -313,8 +313,8 @@ const main = async () => {
         }
         await Promise.all([
             syncJournal(),
-            // syncMusicLog(),
-            // syncReport()
+            syncMusicLog(),
+            syncReport()
         ])
     } catch (error) {
         console.error(error)
