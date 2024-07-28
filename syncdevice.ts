@@ -53,6 +53,7 @@ type RemarkableBlock = { ID: string, Parent: string, VissibleName: string, Modif
 
 const getRemarkableDocuments = async (id?: string): Promise<RemarkableBlock[]> => {
     let res = await axios.request({
+        timeout: 2000,
         url: "http://10.11.99.1/documents/" + (id ? id : ""),
         headers: {
           "accept": "*/*",
@@ -74,6 +75,7 @@ const uploadFileToRemarkable = async (fileName: string) => {
     data.append("file", fs.createReadStream(fileName))
     let res = await axios.request({
         url: "http://10.11.99.1/upload",
+        timeout: 2000,
         headers: {
             "Connection": "keep-alive",
             "accept": "*/*",
@@ -98,11 +100,19 @@ const downloadRemarkableDocument = async (id: string, displayName: string) => {
 }
 
 const syncJournal = async () => {
+    console.log("Syncing journal...")
     return sync("Journal", ["Dreams", "Entry", "Goals for Tomorrow"], process.env.NOTION_JOURNAL_DATABASE_ID)
 }
 
 const syncMusicLog = async () => {
+    console.log("Syncing music log...")
     return sync("Music/Practice Log", ["Time Allocation", "Goals for Tomorrow", "Notes"], process.env.NOTION_PRACTICE_LOG_DATABASE_ID)
+}
+
+function sleep(ms: number) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
 }
 
 const sync = async (remarkable_parent_folder: string, categories: string[], notion_database_id?: string) => {
@@ -126,10 +136,9 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
         let date = new Date(doc.ModifiedClient)
         return doc.Parent == parent_id && date > yesterday
     }).map(doc => ({ id: doc.ID, displayName: doc.VissibleName.replace("/", "-").replace("/", "-") }))
-
     if (child_id.length == 0) return
     await Promise.all(child_id.map(obj => downloadRemarkableDocument(obj.id, obj.displayName)))
-
+    await sleep(1000)
     let pages = await notion.databases.query({
         database_id: notion_database_id,
     })
@@ -166,7 +175,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
             let markdown = notionBlocksToMarkdown(page_children.results)
             // consolidate markdown and text
             let chatCompletion = await openai_client.chat.completions.create({
-                messages: [{ role: 'user', content: markdown + '\n' + pageTexts.join('\n') + `Consolidate the above into the categories ${categories.map((cat, index) => index == categories.length - 1 ? cat : cat + ", ")} Dreams, Entry, and Goals for Tomorrow. Respond in format ${categories.map(cat => "**" + cat + "**:\n [text]\n")}` }],
+                messages: [{ role: 'user', content: markdown + '\n' + pageTexts.join('\n') + `Consolidate the above into the categories ${categories.map((cat, index) => index == categories.length - 1 ? cat : cat + ", ")} Dreams, Entry, and Goals for Tomorrow. Respond in format ${categories.map(cat => "**" + cat + "**:\n [text]\n")}. If nothing exists for the category, leave it blank.` }],
                 model: 'gpt-3.5-turbo'
             })
 
@@ -178,7 +187,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
                 finalText = pageTexts[0]
             } else {
                 let chatCompletion = await openai_client.chat.completions.create({
-                    messages: [{ role: 'user', content: pageTexts.join('\n') + `Consolidate the above into the categories ${categories.map((cat, index) => index == categories.length - 1 ? cat : cat + ", ")} Dreams, Entry, and Goals for Tomorrow. Respond in format ${categories.map(cat => "**" + cat + "**:\n [text]\n")}` }],
+                    messages: [{ role: 'user', content: pageTexts.join('\n') + `Consolidate the above into the categories ${categories.map((cat, index) => index == categories.length - 1 ? cat : cat + ", ")} Dreams, Entry, and Goals for Tomorrow. Respond in format ${categories.map(cat => "**" + cat + "**:\n [text]\n")}. If nothing exists for the category, leave it blank.` }],
                     model: 'gpt-3.5-turbo'
                 })
                 
@@ -192,16 +201,18 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
                 let blocks = await notion.blocks.children.list({
                     block_id: target[0].id
                 })
-                Promise.all(blocks.results.map(block => notion.blocks.delete({
-                    block_id: block.id
-                }))).then(async () => {
-                    await notion.blocks.children.append({
-                        block_id: target[0].id,
-                        children: markdownToBlocks(finalText) as BlockObjectRequest[],
+                for (let j=0; j<blocks.results.length; j++) {
+                    notion.blocks.delete({
+                        block_id: blocks.results[j].id
                     })
+                    await sleep(250)
+                }
+
+                await notion.blocks.children.append({
+                    block_id: target[0].id,
+                    children: markdownToBlocks(finalText) as BlockObjectRequest[],
                 })
-                
-                console.log("Success")
+                console.log("Success in syncing ", remarkable_parent_folder)
             } else {
                 await notion.pages.create({
                     parent: {
@@ -223,7 +234,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
                     children: markdownToBlocks(finalText) as BlockObjectRequest[],
                 })
 
-                console.log("Success")
+                console.log("Success in syncing ", remarkable_parent_folder)
             }
         }
     }    
@@ -234,6 +245,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
 }
 
 const syncReport = async () => {
+    console.log("Syncing news report...")
     let today = new Date()
     let report_name = `Daily Report (${today.getMonth() + 1}-${today.getDate()}-${today.getFullYear()})`
     if (!process.env.NOTION_DAILY_UPDATE_DATABASE_ID) 
@@ -300,8 +312,8 @@ const main = async () => {
             throw new Error("Device not available via usb.")
         }
         await Promise.all([
-            // syncJournal(),
-            syncMusicLog(),
+            syncJournal(),
+            // syncMusicLog(),
             // syncReport()
         ])
     } catch (error) {
