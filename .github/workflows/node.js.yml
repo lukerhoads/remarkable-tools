@@ -5,10 +5,11 @@ name: Node.js CI
 
 on:
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '24 4 * * *'
+  workflow_dispatch:
 
 jobs:
-  build:
+  genreport:
 
     runs-on: ubuntu-latest
 
