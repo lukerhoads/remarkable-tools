@@ -30,3 +30,7 @@ Sync with connected Remarkable via USB:
 ```shell
 npm run sync
 ```
+
+See info for replacing sleep screen and templates here:
+https://www.simplykyra.com/blog/switch-out-your-remarkables-sleep-screen-plus-easily-back-it-up/
+https://dev.to/lrgranger/using-ssh-scp-to-add-custom-remarkable-templates-4a7g
