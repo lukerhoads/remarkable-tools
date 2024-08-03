@@ -13,7 +13,7 @@ import { pdfToPng, PngPageOutput } from 'pdf-to-png-converter'
 import vision from '@google-cloud/vision'
 import OpenAI from 'openai'
 import { markdownToBlocks } from '@tryfabric/martian'
-import { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints'
+import { BlockObjectRequest, QueryDatabaseResponse } from '@notionhq/client/build/src/api-endpoints'
 
 const notion = new Client({
     auth: process.env.NOTION_TOKEN
@@ -117,8 +117,10 @@ function sleep(ms: number) {
 
 const sync = async (remarkable_parent_folder: string, categories: string[], notion_database_id?: string) => {
     let folder_split = remarkable_parent_folder.split("/")
+    let last_folder_split = folder_split[folder_split.length - 1]
     let today = new Date()
-    let yesterday = new Date(today.getDate() - 1)
+    let yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
     if (!notion_database_id)
         throw new Error('NOTION_JOURNAL_DATABASE_ID is not set')
     
@@ -131,18 +133,20 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
         parent_id = temp_id[0]
         parsedData = await getRemarkableDocuments(parent_id)
     }
-    
-    let child_id = parsedData.filter(doc => {
-        let date = new Date(doc.ModifiedClient)
-        return doc.Parent == parent_id && date > yesterday
-    }).map(doc => ({ id: doc.ID, displayName: doc.VissibleName.replace("/", "-").replace("/", "-") }))
-    if (child_id.length == 0) return
-    await Promise.all(child_id.map(obj => downloadRemarkableDocument(obj.id, obj.displayName)))
-    await sleep(1000)
-    let pages = await notion.databases.query({
+
+    let pages: QueryDatabaseResponse = await notion.databases.query({
         database_id: notion_database_id,
     })
 
+    let dates = pages.results.map((page: any) => (page.properties.Name as any).title[0].text.content)
+    let child_id = parsedData.filter(doc => {
+        let existing_page = pages.results.filter((page: any) => (page.properties.Name as any).title[0].text.content == doc.VissibleName)
+        let checked = existing_page.length > 0 && ((existing_page[0] as any).properties.Synced as any).checkbox
+        return doc.Parent == parent_id && (!dates.includes(doc.VissibleName) || (existing_page.length > 0 && !checked))
+    }).map(doc => ({ id: doc.ID, displayName: doc.VissibleName.replace("/", "-").replace("/", "-") }))
+    if (child_id.length == 0) return
+    await Promise.all(child_id.map(obj => downloadRemarkableDocument(obj.id, last_folder_split + " - " + obj.displayName)))
+    await sleep(child_id.length * 1000)    
     for (let i=0; i<child_id.length; i++) {
     // for (let i=0; i<1; i++) {
         let finalText = ""
@@ -156,7 +160,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
             return false
         })
 
-        let pngPages = await pdfToPng(`./${child_id[i].displayName}.pdf`)
+        let pngPages = await pdfToPng(`./${last_folder_split} - ${child_id[i].displayName}.pdf`)
         const getTextFromPage = async (page: PngPageOutput) => {
             let client = new vision.ImageAnnotatorClient()
             let imagePath = "./" + page.name + ".png"
@@ -196,8 +200,10 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
             }
         }
 
+        let page_id = ""
         if (finalText != "") {
             if (target.length > 0) {
+                page_id = target[0].id
                 let blocks = await notion.blocks.children.list({
                     block_id: target[0].id
                 })
@@ -205,7 +211,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
                     notion.blocks.delete({
                         block_id: blocks.results[j].id
                     })
-                    await sleep(250)
+                    await sleep(1000)
                 }
 
                 await notion.blocks.children.append({
@@ -214,7 +220,7 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
                 })
                 console.log("Success in syncing ", remarkable_parent_folder)
             } else {
-                await notion.pages.create({
+                let res = await notion.pages.create({
                     parent: {
                         database_id: notion_database_id,
                     },
@@ -234,14 +240,26 @@ const sync = async (remarkable_parent_folder: string, categories: string[], noti
                     children: markdownToBlocks(finalText) as BlockObjectRequest[],
                 })
 
+                page_id = res.id
                 console.log("Success in syncing ", remarkable_parent_folder)
             }
         }
-    }    
 
-    child_id.forEach(child => {
-        fs.unlinkSync(`./${child.displayName}.pdf`)
-    })
+        // Check sync on page
+        if (page_id != "") {
+            await notion.pages.update({
+                page_id: page_id,
+                properties: {
+                    Synced: {
+                        type: 'checkbox',
+                        checkbox: true
+                    }
+                }
+            })
+        }
+
+        fs.unlinkSync(`./${last_folder_split} - ${child_id[i].displayName}.pdf`)
+    }    
 }
 
 const syncReport = async () => {
