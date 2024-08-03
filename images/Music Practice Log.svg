@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Music_Log_Template" data-name="Music Log Template" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1404 1872">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #000;
+        font-family: Swiss721BT-Roman, 'Swis721 BT';
+        font-size: 43.96px;
+      }
+
+      .cls-2 {
+        letter-spacing: 0em;
+      }
+
+      .cls-3 {
+        letter-spacing: -.12em;
+      }
+
+      .cls-4 {
+        fill: #fff;
+        stroke-width: 0px;
+      }
+
+      .cls-5 {
+        letter-spacing: -.01em;
+      }
+    </style>
+  </defs>
+  <rect class="cls-4" width="1404" height="1872"/>
+  <text class="cls-1" transform="translate(33.05 66.4)"><tspan class="cls-5" x="0" y="0">T</tspan><tspan class="cls-2" x="24.53" y="0">ime Allocation:</tspan></text>
+  <text class="cls-1" transform="translate(33.05 690.4)"><tspan x="0" y="0">Goals for </tspan><tspan class="cls-3" x="190.57" y="0">T</tspan><tspan x="210.44" y="0">omorrow:</tspan></text>
+  <text class="cls-1" transform="translate(33.05 1314.4)"><tspan x="0" y="0">Notes:</tspan></text>
+</svg>
